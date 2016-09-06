@@ -50,13 +50,27 @@ colnames(tdSum)[c(3)]<-"counter"
 kb<-c("R","Key Bridge")
 locK<-rbind(loc,kb)
 tdLocSum<-merge(locK,tdSum,by="counter")
-tdLocSum$direction<-ifelse(tdLocSum$counter=="R" & tdLocSum$direction=="I","Southbound",
-                           ifelse(tdLocSum$counter=="R" & tdLocSum$direction=="O","Northbound",
-                                  ifelse(tdLocSum$counter!="R" & tdLocSum$direction=="I","Northbound",
-                                         "Southbound")))
+tdLocSum$direction<-ifelse(tdLocSum$direction=="I","Inbound (towards Arl)", "Outbound")
 
+#memorial bridge data provided by David at ArlBike - it's weekday only
+memBridge<-read.csv("memBridge.csv", fill = FALSE, strip.white = TRUE,stringsAsFactors=FALSE)
+memBridge$date<-as.Date(memBridge$Date,format = "%d/%m/%Y")
+memBridge$day<- weekdays(memBridge$date)
+memBridge<-subset(memBridge,memBridge$day %in% c("Monday","Tuesday","Wednesday","Thursday","Friday"))
+memBridge$hour<-as.numeric(gsub("\\:.*","",memBridge$X))
+memBridge<-memBridge[c(4:6,8)]
+mb <- melt(memBridge, id.vars = c("date", "hour"))
+mbh<-ddply(mb, c("date","hour","variable"), function(df)sum(df$value,na.rm=TRUE))
+mbSum<-ddply(mbh, c("hour","variable"), function(df)median(df$V1))
+mbSum$counter<-rep("M",48)
+mbSum$name<-rep("Memorial Bridge",48)
+mbSum$direction<-ifelse(mbSum$variable=="PyroBox.08_IN","Inbound (towards Arl)","Outbound")
+mbSum<-mbSum[c(1,3:6)]
 
-ggplot(data=tdLocSum, aes(x=hour,y=V1, group=direction,color=direction)) +
+bridgeSum<-rbind(tdLocSum,mbSum)
+bridgeSum<-subset(bridgeSum,bridgeSum$counter!="11")
+
+ggplot(data=bridgeSum, aes(x=hour,y=V1, group=direction,color=direction)) +
   facet_wrap(~name) +
   geom_line()+
   theme(axis.text.x = element_text()) +
@@ -67,7 +81,7 @@ ggplot(data=tdLocSum, aes(x=hour,y=V1, group=direction,color=direction)) +
   theme(legend.title=element_blank()) +
   theme(legend.background = element_rect(fill="#EFF0F1")) +
   theme(axis.title.y = element_text(color="#505050")) +
-  labs(x="Hour (military time)", y="Number of bikes counted", title="Weekday Bike Flows")
+  labs(x="Hour (24h)", y="Number of bikes counted", title="Weekday Bike Flows")
 
 
 ###Weather Comparison###
