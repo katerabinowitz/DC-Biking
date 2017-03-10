@@ -33,7 +33,7 @@ cabiCount <- as.data.frame(table(cabiCB$Bike.number)) %>%
 cabiCB <- cabiCB %>% subset(cabiCB$Bike.number %in% cabiCount$Var1)
                   
 cabiDuration <- cabiCB %>% select(Bike.number, Duration..ms.) %>%
-  mutate(DurationM=Duration..ms./60000)
+  mutate(DurationM=Duration..ms./60000) %>%
   group_by(Bike.number) %>%
   do(tidy(t(quantile(.$DurationM))) ) %>%
   arrange(desc(X50.))
@@ -47,7 +47,7 @@ cabiTotalTime <- cabiCB %>% select(Bike.number, Duration..ms.) %>%
 ### Look at bloom bike locations and downtime ###
 ### Look at bloom bike locations and downtime ###
 ### Look at bloom bike locations and downtime ###
-bloom <- subset(cabiCB,cabiCB$Bike.number=="####") %>%
+bloom <- subset(cabiCB,cabiCB$Bike.number=="######") %>%
          arrange(startDT) %>%
          mutate(lagEnd=lag(End.station),
                 lagTime=lag(endDT), 
@@ -76,6 +76,8 @@ bloomStation <- as.data.frame(table(bloomStation$Start.station)) %>%
 
 cabiLocs <- readOGR("http://opendata.dc.gov/datasets/a1f7acf65795451d89f0a38565a975b3_5.geojson","OGRGeoJSON")
 cabiBloomMap <- merge(cabiLocs, bloomStation, by.x="ADDRESS",by.y="Var1")
+
+cabiBloomMap <- cabiBloomMap[!(is.na(cabiBloomMap@data$Freq)),]  
 
 writeOGR(cabiBloomMap, 'cabiBloomMap.geojson','cabiBloomMap', driver='GeoJSON',check_exists = FALSE)
 
