@@ -4,8 +4,11 @@ library(ggplot2)
 ###Read in Data###
 ###Read in Data###
 ###Read in Data###
-bc<-read.csv("/Users/katerabinowitz/Documents/DataLensDC Org/bikeCount.csv",
-             fill = FALSE, strip.white = TRUE,stringsAsFactors=FALSE)
+setwd ("/Users/katerabinowitz/Documents/DataLensDC")
+bc<-read.csv("bikeCount.csv",
+             strip.white = TRUE,stringsAsFactors=FALSE)
+
+
 loc<-read.csv("/Users/katerabinowitz/Documents/DataLensDC Org/counterLocation.csv",
              fill = FALSE, strip.white = TRUE,stringsAsFactors=FALSE)
 bcHour<-read.csv("/Users/katerabinowitz/Documents/DataLensDC Org/bikeCountHour.csv",

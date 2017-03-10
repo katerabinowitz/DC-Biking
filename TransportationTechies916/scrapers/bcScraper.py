@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 
-counterID=[7,8,11,30,31]
+counterID=range(1,26)
 dfList=[]
 dfHourList=[]
 
@@ -11,7 +11,7 @@ dfHourList=[]
 ###Get hourly bike count for BTWD 2016###
 ###Get hourly bike count for BTWD 2016###
 for num in counterID:
-	url = 'http://webservices.commuterpage.com/counters.cfc?wsdl&method=GetCountInDateRange&counterid='+str(num)+'&startDate=03/01/2016&endDate=09/01/2016&mode=B&interval=h'
+	url = 'http://webservices.commuterpage.com/counters.cfc?wsdl&method=GetCountInDateRange&counterid='+str(num)+'&startDate=09/01/2013&endDate=09/20/2016&mode=B&interval=d'
 	r = requests.get(url)
 
 	soup = BeautifulSoup(r.text)
@@ -19,7 +19,6 @@ for num in counterID:
 	date=[]
 	direction=[]
 	mode=[]
-	hour=[]
 	ib=[]
 	ob=[]
 
@@ -38,13 +37,10 @@ for num in counterID:
 		m=soup.findAll("count")[i]["mode"]
 		mode.append(m)
 
-		h=soup.findAll("count")[i]["hour"]
-		hour.append(h)
-
 	counter= [num] * len(soup.findAll("count"))
-	innerColumns = {'counter':counter,'bikeCount': bikeCount, 'date': date, 'direction': direction, 'mode': mode, 'hour':hour}
+	innerColumns = {'counter':counter,'bikeCount': bikeCount, 'date': date, 'direction': direction, 'mode': mode}
 	bikeCounts = pd.DataFrame(innerColumns)
 	dfHourList.append(bikeCounts)
 bikeCountHour = pd.concat(dfHourList)
-bikeCountHour.to_csv('bridgeCount.csv')
+bikeCountHour.to_csv('tempBikeCount.csv')
 

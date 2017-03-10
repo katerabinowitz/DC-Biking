@@ -26,6 +26,7 @@ ggplot(data=baSum, aes(x=DayHour, y=V1, group=counter, colour=counter)) +
   geom_point()
 
 
+
 ###Bridge Directions###
 ###Bridge Directions###
 ###Bridge Directions###
