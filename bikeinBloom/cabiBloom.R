@@ -1,7 +1,7 @@
 library(dplyr)
 library(broom)
 library(rgdal)
-setwd("/Users/katerabinowitz/Documents/DataLensDCOrg/CaBiBloom")
+setwd("/Users/katerabinowitz/Documents/DataLensDC/DC-Biking/bikeinBloom")
 
 ### Create clean Cabi 2016 H1 dataset ###
 ### Create clean Cabi 2016 H1 dataset ###
@@ -47,11 +47,28 @@ cabiTotalTime <- cabiCB %>% select(Bike.number, Duration..ms.) %>%
 ### Look at bloom bike locations and downtime ###
 ### Look at bloom bike locations and downtime ###
 ### Look at bloom bike locations and downtime ###
-bloom <- subset(cabiCB,cabiCB$Bike.number=="######") %>%
+# Rename stations that have been renamed or moved (a short distance)
+bloom <- subset(cabiCB,cabiCB$Bike.number=="XXXXXX") %>%
          arrange(startDT) %>%
-         mutate(lagEnd=lag(End.station),
-                lagTime=lag(endDT), 
-                downTime=startDT-lagTime)
+         mutate(lagTime=lag(endDT), 
+                downTime=startDT-lagTime, 
+                Start.station = ifelse(Start.station=="Smithsonian / Jefferson Dr & 12th St SW","Smithsonian-National Mall / Jefferson Dr & 12th St SW",
+                                  ifelse(Start.station=="7th & F St NW / National Portrait Gallery","7th & F St NW/Portrait Gallery",
+                                     ifelse(Start.station=="MLK Library/9th & G St NW","10th & G St NW",
+                                            ifelse(Start.station=="N Quincy St & Wilson Blvd","Wilson Blvd & N Quincy St",
+                                                   ifelse(Start.station=="5th & Kennedy St NW","4th & Kennedy St NW",
+                                                          ifelse(Start.station=="20th & Bell St","Eads St & 15th St S",
+                                                                 ifelse(Start.station=="Lee Hwy & N Nelson St","Lee Hwy & N Monroe St",
+                                                                        as.character(Start.station)))))))),
+                End.station = ifelse(End.station=="Smithsonian / Jefferson Dr & 12th St SW","Smithsonian-National Mall / Jefferson Dr & 12th St SW",
+                                       ifelse(End.station=="7th & F St NW / National Portrait Gallery","7th & F St NW/Portrait Gallery",
+                                              ifelse(End.station=="MLK Library/9th & G St NW","10th & G St NW",
+                                                     ifelse(End.station=="N Quincy St & Wilson Blvd","Wilson Blvd & N Quincy St",
+                                                            ifelse(End.station=="5th & Kennedy St NW","4th & Kennedy St NW",
+                                                                   ifelse(End.station=="20th & Bell St","Eads St & 15th St S",
+                                                                          ifelse(End.station=="Lee Hwy & N Nelson St","Lee Hwy & N Monroe St",
+                                                                                 as.character(End.station)))))))),
+                lagEnd=lag(End.station))
 
 #where bike was rebalanced, append end station to start station to account for that bike location
 bloomMove <- bloom %>% subset(Start.station != lagEnd) %>% 
@@ -59,26 +76,28 @@ bloomMove <- bloom %>% subset(Start.station != lagEnd) %>%
                        rename(Start.station = lagEnd)
 
 bloomStation <- bloom %>% select(Start.station)
-
 bloomStation <- rbind(bloomStation, bloomMove)
-
-# Rename stations that have been renamed or moved (a short distance)
 bloomStation <- as.data.frame(table(bloomStation$Start.station)) %>%
-                arrange(desc(Freq)) %>%
-                mutate(Var1 = ifelse(Var1=="Smithsonian / Jefferson Dr & 12th St SW","Smithsonian-National Mall / Jefferson Dr & 12th St SW",
-                                     ifelse(Var1=="7th & F St NW / National Portrait Gallery","7th & F St NW/Portrait Gallery",
-                                            ifelse(Var1=="MLK Library/9th & G St NW","10th & G St NW",
-                                                   ifelse(Var1=="N Quincy St & Wilson Blvd","Wilson Blvd & N Quincy St",
-                                                          ifelse(Var1=="5th & Kennedy St NW","4th & Kennedy St NW",
-                                                                 ifelse(Var1=="20th & Bell St","Eads St & 15th St S",
-                                                                        ifelse(Var1=="Lee Hwy & N Nelson St","Lee Hwy & N Monroe St",
-                                                                               as.character(Var1)))))))))
+                arrange(desc(Freq)) 
 
 cabiLocs <- readOGR("http://opendata.dc.gov/datasets/a1f7acf65795451d89f0a38565a975b3_5.geojson","OGRGeoJSON")
-cabiBloomMap <- merge(cabiLocs, bloomStation, by.x="ADDRESS",by.y="Var1")
 
+cabiBloomMap <- merge(cabiLocs, bloomStation, by.x="ADDRESS",by.y="Var1")
 cabiBloomMap <- cabiBloomMap[!(is.na(cabiBloomMap@data$Freq)),]  
 
-writeOGR(cabiBloomMap, 'cabiBloomMap.geojson','cabiBloomMap', driver='GeoJSON',check_exists = FALSE)
+bloomDT <- bloom %>% arrange(desc(downTime)) %>%
+                     mutate(move=ifelse(Start.station != lagEnd,1,0), 
+                            startHr=as.POSIXlt(startDT)$hour, 
+                            endHr=as.POSIXlt(lagTime)$hour,
+                            minDT=downTime/60,
+                            hrDT=downTime/3600) %>%
+                     filter(move==0)
 
-bloomDT <- bloom %>% arrange(desc(downTime))
+bloomDTStation <- bloomDT %>% group_by(Start.station) %>% 
+                              summarise(medDT=median(minDT)) %>%
+                              mutate(medDT=as.numeric(medDT)) %>%
+                              arrange(desc(medDT))
+str(bloomDTStation)
+
+cabiBloomMap <- merge(cabiBloomMap, bloomDTStation, by.x="ADDRESS",by.y="Start.station")
+writeOGR(cabiBloomMap, 'cabiBloomMap.geojson','cabiBloomMap', driver='GeoJSON',check_exists = FALSE)
