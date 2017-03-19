@@ -1,6 +1,7 @@
 library(dplyr)
 library(broom)
 library(rgdal)
+require(classInt)
 setwd("/Users/katerabinowitz/Documents/DataLensDC/DC-Biking/bikeinBloom")
 
 ### Create clean Cabi 2016 H1 dataset ###
@@ -94,10 +95,13 @@ bloomDT <- bloom %>% arrange(desc(downTime)) %>%
                      filter(move==0)
 
 bloomDTStation <- bloomDT %>% group_by(Start.station) %>% 
-                              summarise(medDT=median(minDT)) %>%
-                              mutate(medDT=as.numeric(medDT)) %>%
-                              arrange(desc(medDT))
+                              summarise(meanDT=mean(minDT)) %>%
+                              mutate(meanDT=as.numeric(meanDT)) %>%
+                              arrange(desc(meanDT))
 str(bloomDTStation)
+
+nat = classIntervals(bloomDTStation[[2]], n = 10, style = 'jenks')$brks
+nat
 
 cabiBloomMap <- merge(cabiBloomMap, bloomDTStation, by.x="ADDRESS",by.y="Start.station")
 writeOGR(cabiBloomMap, 'cabiBloomMap.geojson','cabiBloomMap', driver='GeoJSON',check_exists = FALSE)
